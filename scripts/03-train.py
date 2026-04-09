@@ -73,19 +73,19 @@ results = model.train(
 )
 
 # ── Video Inference ─────────────────────────────
-video_path = PROJECT_ROOT / "example.mp4"
+# video_path = PROJECT_ROOT / "example.mp4"
 best_weights = PROJECT_ROOT / "runs" / RUN_INSTANCE / "weights" / "best.pt"
 
-trained_model = YOLO(str(best_weights))
+# trained_model = YOLO(str(best_weights))
 
-trained_model.predict(
-    source=str(video_path),
-    save=True,
-    project=str(PROJECT_ROOT / "runs" / RUN_INSTANCE),
-    name=f"result_{video_path.stem}",
-    conf=0.25,             # confidence threshold
-    imgsz=640,
-)
+# trained_model.predict(
+#     source=str(video_path),
+#     save=True,
+#     project=str(PROJECT_ROOT / "runs" / RUN_INSTANCE),
+#     name=f"result_{video_path.stem}",
+#     conf=0.25,             # confidence threshold
+#     imgsz=640,
+# )
 
 # Convert to onnx
 # 1. Load the PyTorch model
