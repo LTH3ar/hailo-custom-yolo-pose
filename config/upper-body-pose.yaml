@@ -1,0 +1,40 @@
+# Keeping keypoints 0–12: full upper body + hips (removing knees & ankles)
+
+path: data          # relative to your project root
+train: images/train2017
+val:   images/val2017
+
+# Point to your filtered labels
+# YOLO looks for labels at <path>/labels/<split> by default,
+
+# ── Keypoints ──────────────────────────────────────────────
+# 13 keypoints kept: indices 0–12 from original COCO 17
+kpt_shape: [13, 3]    # [num_keypoints, dims]  3 = x, y, visibility
+
+# flip_idx: maps each kpt to its left<->right mirror
+# New indices:   0     1      2       3      4       5        6        7       8      9       10     11     12
+# Keypoint:    nose  l_eye  r_eye  l_ear  r_ear  l_shldr  r_shldr  l_elbow r_elbow l_wrist r_wrist l_hip  r_hip
+# Pairs:       (1,2) (3,4) (5,6) (7,8) (9,10) (11,12),  0 is symmetric
+flip_idx: [0, 2, 1, 4, 3, 6, 5, 8, 7, 10, 9, 12, 11]
+
+# ── Classes ────────────────────────────────────────────────
+nc: 1
+names:
+  0: person
+
+# ── Keypoint names (optional, for readability) ─────────────
+kpt_names:
+  0:
+    - nose           # 0
+    - left_eye       # 1
+    - right_eye      # 2
+    - left_ear       # 3
+    - right_ear      # 4
+    - left_shoulder  # 5
+    - right_shoulder # 6
+    - left_elbow     # 7
+    - right_elbow    # 8
+    - left_wrist     # 9
+    - right_wrist    # 10
+    - left_hip       # 11
+    - right_hip      # 12
