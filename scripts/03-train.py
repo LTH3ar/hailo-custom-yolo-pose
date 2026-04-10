@@ -9,7 +9,7 @@ print(PROJECT_ROOT)
 TIMESTAMP = datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
 print(TIMESTAMP)
 
-MODEL_NAME = "yolov8m-pose" # select pretrain model, name only: yolov8n/s/m-pose, yolov11n/s/m-pose, yolo26n/s/m-pose
+MODEL_NAME = "yolov8n-pose" # select pretrain model, name only: yolov8n/s/m-pose, yolov11n/s/m-pose, yolo26n/s/m-pose
 
 model = YOLO(f"{MODEL_NAME}.pt")  # pretrained pose model
 
@@ -17,10 +17,10 @@ RUN_INSTANCE = f"upper-body-pose_{MODEL_NAME}_{TIMESTAMP}"
 
 results = model.train(
     data="config/upper-body-pose.yaml", # path to yaml model config file
-    epochs=100,            # default
-    # epochs=1,            # test only
+    # epochs=100,            # default
+    epochs=1,            # test only
     imgsz=640,             # default
-    batch=32,              # default (use -1 for auto GPU memory)
+    batch=16,              # default (use -1 for auto GPU memory)
     project=str(PROJECT_ROOT / "runs"),
     name=RUN_INSTANCE,
 
