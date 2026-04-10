@@ -215,3 +215,7 @@ data/downloads/
 data/images/
 data/labels/
 *.extracted
+
+# runs
+runs/
+*.pt
