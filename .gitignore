@@ -208,3 +208,10 @@ __marimo__/
 
 # venv
 .venv*/
+
+# data
+data/annotations/
+data/downloads/
+data/images/
+data/labels/
+*.extracted
