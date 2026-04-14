@@ -9,4 +9,4 @@ post_quantization_optimization(finetune, policy=enabled, epochs=10, learning_rat
 loss_layer_names=[output_layer1, output_layer2, output_layer3, output_layer4, output_layer5, output_layer6, output_layer7, output_layer8, output_layer9, conv83, conv67, conv51, conv89, conv72 , conv58],
 loss_factors= [1, 1, 2, 1, 1, 2, 1, 1, 2, 2, 2, 2, 1, 1, 1])
 
-allocator_param(spatial_defuse_legacy=True)
+allocator_param(automatic_reshapes=disabled)
