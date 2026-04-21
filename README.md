@@ -103,6 +103,18 @@ You need to manually link your system's CUDA `libdevice` into your virtual envir
    export XLA_FLAGS=--xla_gpu_cuda_data_dir=$(pwd)/.venv_hailo
    ```
 
+### Hailo Refuses to Use GPU
+If Hailo is falling back to the CPU and refusing to utilize your GPU, it is usually caused by missing or incorrect versions of the GPU-enabled runtime and TensorFlow libraries. 
+
+**The Fix:**
+Force install the specific GPU-compatible versions of `onnxruntime` and `tensorflow` via pip:
+
+```bash
+pip install onnxruntime-gpu==1.18.0
+pip install "tensorflow[and-cuda]==2.18.0"
+```
+
+> **Note:** You might see dependency incompatibility warnings during installation regarding `onnxruntime`. This is expected and normal—you can safely ignore these warnings as your setup will still work properly.
 ---
 
 ---
