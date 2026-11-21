@@ -9,9 +9,13 @@ The model script (.alls) sets the input normalisation, a sigmoid on the class ou
 conv71, ...), so check with hef_reader.py that those positions really are the keypoint and
 class outputs for the model being compiled: a mismatch quantises the keypoints to 8 bits.
 
-Calibration uses --images random images from CALIB_DIR, drawn with --seed so a compile can be
-repeated exactly. (The thesis models were compiled before the seed existed, and one unlucky draw
-cost the s model 26 AP points.) Different seeds give different HEFs: compare several.
+Calibration uses --images random images from CALIB_DIR, drawn with --seed, so the same seed
+always draws the same images. The HEF itself is not exactly repeatable: the optimisation
+(fine-tuning) varies from run to run, so even the same seed gives a slightly different HEF.
+Across five seeds, COCO keypoint AP moved by about +-0.01 per model. Once in eight s runs,
+optimisation failed outright (AP 0.260 instead of ~0.5); its output SNR was 4-11 dB on every
+output, but SNR does not rank healthy builds. So check each HEF's accuracy on a small image set
+that is not the test set before using it, and compare a few seeds.
 
 Outputs go to --out-dir (default: next to the ONNX) as <name>.har, <name>_optimized.har and
 <name>.hef, where <name> defaults to the ONNX file name. Next to them, <name>.build.json records

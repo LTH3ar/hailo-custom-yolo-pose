@@ -81,9 +81,17 @@ Once training is complete, convert your best Pytorch weights into a Hailo-compat
 python yolo/scripts/04-pytorch-to-hailo.py weights/best.onnx data/images/train2017 yolo/config/yolov8s_pose.alls
 ```
 
-Calibration draws 1,024 random images with `--seed` (default 0), so a compile can be repeated exactly; the list of images is saved next to the cache. The thesis models were compiled before the seed existed.
+Calibration draws 1,024 random images with `--seed` (default 0). The same seed always draws the same images; the list is saved next to the cache. The compiler uses 64 of them for the quantisation statistics and all 1,024 for fine-tuning. The thesis models were compiled before the seed existed.
 
-**The draw matters.** The deployed s HEF scored keypoint AP 0.260 on COCO; the same ONNX recompiled with `--seed 0` scored 0.517. Nothing else differed. Compile a few seeds and keep the best one. Rank them on images that are not in the test set, otherwise the test score flatters the result.
+**Check every HEF.** The optimisation step varies from run to run, so the same seed doesn't give a byte-identical HEF. Calibration seeds and repeated runs move COCO keypoint AP only a little:
+
+| Model | Val AP over five seeds (mean ± SD, min-max) |
+|---|---|
+| n | 0.430 ± 0.007 (0.418-0.437) |
+| s | 0.508 ± 0.011 (0.490-0.517) |
+| m | 0.570 ± 0.006 (0.562-0.576) |
+
+Once in eight s runs, though, optimisation failed outright. That was the s HEF used in the thesis: AP 0.260. Re-optimising with the very same calibration images gave 0.487. The failed run's output SNR was low on every output (4-11 dB), but SNR doesn't rank healthy builds. So score each new HEF on a small set of images that are *not* in the test set (1,000 COCO train2017 images not used for calibration take under a minute on the Pi), compare a few seeds, and keep the best. Ranking on the test set itself would flatter the result.
 
 `--name` and `--out-dir` name the outputs, so builds don't overwrite each other. Every build writes `<name>.build.json` next to its HEF, with:
 - the ONNX and model-script checksums, and the script text
