@@ -219,3 +219,5 @@ data/labels/
 # runs
 runs/
 *.pt
+# pose-cache hash caches written next to the caches
+*.md5.json

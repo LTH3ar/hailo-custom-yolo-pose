@@ -1,0 +1,6 @@
+# classifiers/: scikit-learn models on hcpose pose features
+# plus hcpose itself:  pip install -e path/to/hailo-custom-yolo-pose-runtime
+numpy
+scikit-learn>=1.4
+pyyaml
+pytest
