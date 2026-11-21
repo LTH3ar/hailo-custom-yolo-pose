@@ -24,10 +24,10 @@ import json
 import os
 import re
 
-from .mapping import MAPPINGS
-
-# the thesis mapping; used to detect students whose merged labels conflict
-FOCUSED, DISTRACTED = MAPPINGS["thesis"]
+# SCB's own label names under the thesis mapping. Only used to find students whose merged copies
+# carry both a focused and a distracted label; they are dropped whatever mapping trains later.
+FOCUSED = {"read", "write", "hand-raising"}
+DISTRACTED = {"TurnHead", "BowHead", "discuss"}
 
 
 def lesson_key(path):

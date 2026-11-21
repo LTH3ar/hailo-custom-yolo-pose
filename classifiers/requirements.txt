@@ -3,4 +3,5 @@
 numpy
 scikit-learn>=1.4
 pyyaml
+pillow
 pytest

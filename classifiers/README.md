@@ -4,6 +4,31 @@ These models decide, for one student in one frame, whether they look focused or 
 
 They are trained with **supervised** learning on **stand-in (proxy) labels**: the datasets label *actions* (reading, writing, turning the head, ...), which are mapped to focused or distracted. The mapping is fixed before training and named in every result (`common/mapping.py`).
 
+## Datasets
+
+| Dataset | What | Split groups | Source |
+|---|---|---|---|
+| SCB | ~10,000 classroom photos, Chinese schools: read, write, hand-raising, TurnHead, BowHead, discuss | lessons, from the file names | [SCB-Dataset](https://github.com/Whiffe/SCB-Dataset); academic, non-commercial use |
+| ClaBehavior | 400 frames (2560×1440, 3840×2160) from fixed classroom cameras: lookup, read, write, raise_hand, turn_head, discuss, stand | camera views, found by image similarity (`prepare_clabehavior.py`) | [Student-behavior-detection-system](https://github.com/CCNUZFW/Student-behavior-detection-system), Apache-2.0 |
+
+ClaBehavior's **lookup** (head up, looking at the board) is the attentive state SCB lacks, which is why the SCB-trained classifiers called attentive lectures distracted. STBD-08 and HCCB are not used: their provenance or release could not be verified.
+
+**Privacy.** These are classroom photos, mostly of minors. The images stay on the machines that hold them; only pose caches, labels and numbers move. No image or crop goes into a repository, a paper or a slide. Cite each dataset's paper.
+
+**Duplicates.** SCB has pictures saved more than once. Byte-identical copies across its subsets are merged into one image with the union of their labels (as in the thesis). Pictures saved twice but re-encoded or resized are put in the same split group, so they can't sit on both sides of a split. SCB's shipped train/val splits are not used: 950 copy groups straddle them.
+
+## Mappings
+
+Labels are first translated to shared action names, then to focused or distracted:
+
+| Mapping | Focused | Distracted | Left out |
+|---|---|---|---|
+| `thesis` (SCB only) | read, write, raise hand | turn head, bow head, discuss | - |
+| `strict` | read, write, raise hand, look up | turn head | bow head, discuss, stand |
+| `lenient` | read, write, raise hand, look up | turn head, bow head, discuss, stand | - |
+
+Bow head looks like writing, discuss may be on-task group work, and stand may be answering a question, so `strict` leaves them out and `lenient` counts them as distracted. Report both.
+
 ## Layout
 
 | Path | What |
@@ -12,9 +37,10 @@ They are trained with **supervised** learning on **stand-in (proxy) labels**: th
 | `logistic/train.py` | logistic regression |
 | `mlp/train.py` | a small neural network, two hidden layers of 64 and 32 units |
 | `train_all.py` | all three at once, one comparison table (the thesis procedure) |
-| `common/` | shared code: dataset loading and duplicate handling (`scb.py`), label mapping, features, grouped cross-validation, export |
+| `prepare_clabehavior.py` | lays ClaBehavior out like SCB for the pose extractor, and writes its camera groups |
+| `common/` | shared code: dataset loading (`datasets.py`, `scb.py`), duplicate and camera grouping (`neardup.py`), label mappings, features (`samples.py`), cross-validation and cross-dataset tests (`run.py`), export |
 | `experiments/` | `learn.py` (is the task learnable from keypoints?) and `eval_tiling.py` (do the classifiers behave the same on tiled poses?) |
-| `tests/` | an end-to-end test on a synthetic pose cache |
+| `tests/` | end-to-end tests on synthetic data in the real formats |
 
 ## Setup
 
@@ -37,12 +63,30 @@ A pose cache is a JSON-lines file with one line per image: the image path, the d
 .venv/bin/python research/scb/extract_hef.py ~/models/upper_body_m.hef ~/scb/poses_hef_m_tiles.jsonl <SCB dirs...> --tiles auto
 ```
 
-## Training
-
-The thesis models (pooled poses with and without tiles, m INT8, detection threshold 0.3):
+ClaBehavior is laid out like SCB first (on the machine that holds the images), then extracted the same way:
 
 ```bash
-python -m classifiers.train_all ~/scb/poses_hef_m.jsonl ~/scb/poses_hef_m_tiles.jsonl --det-thr 0.3 \
+python -m classifiers.prepare_clabehavior ~/datasets/clabehavior ~/datasets/clabehavior_yolo
+# prints the extractor argument: ~/datasets/clabehavior_yolo:lookup,read,turn_head,...
+.venv/bin/python research/scb/extract_hef.py ~/models/upper_body_m.hef ~/datasets/poses_cla_m.jsonl <that argument>
+```
+
+## Training
+
+SCB and ClaBehavior, strict mapping, with cross-dataset tests:
+
+```bash
+python -m classifiers.train_all ~/scb/poses_m.jsonl ~/scb/poses_m_tiles.jsonl \
+    --clabehavior ~/datasets/poses_cla_m.jsonl ~/datasets/poses_cla_m_tiles.jsonl \
+    --mapping strict --cross --det-thr 0.3 --report report_strict.json
+```
+
+This prints the pooled cross-validation (folds grouped by lesson or camera view), broken down per dataset, and then `--cross`: each model trained on all of one dataset and tested on the other. Run it again with `--mapping lenient`.
+
+The thesis models, reproduced exactly (`--no-near-dups` keeps the thesis's folds; the thesis mapping is the default):
+
+```bash
+python -m classifiers.train_all ~/scb/poses_hef_m.jsonl ~/scb/poses_hef_m_tiles.jsonl --det-thr 0.3 --no-near-dups \
     --name scb-m-int8-tiles --export-dir ../hailo-custom-yolo-pose-runtime/hcpose/engagement/models \
     --save-cv ~/scb/cv_m_pooled.npz
 ```
@@ -57,4 +101,4 @@ Each run prints, for every family, the AUC, the within-image AUC and the balance
 
 ## What the thesis found
 
-On SCB the classifiers rank actions well (within-image AUC 0.84 for trees and MLP), but on a real lecture they call 48-89% of attentive students distracted: SCB has no "listening" label, so a raised head reads as distracted. The rules stay the default in hcpose. Next: more datasets with a head-up attentive class, a strict and a lenient mapping, and cross-dataset tests.
+On SCB the classifiers rank actions well (within-image AUC 0.84 for trees and MLP), but on a real lecture they call 48-89% of attentive students distracted: SCB has no "listening" label, so a raised head reads as distracted. The rules stay the default in hcpose. ClaBehavior's lookup class and the cross-dataset tests check whether that gap closes with head-up attentive examples.
