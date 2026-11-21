@@ -83,7 +83,24 @@ python yolo/scripts/04-pytorch-to-hailo.py weights/best.onnx data/images/train20
 
 Calibration draws 1,024 random images with `--seed` (default 0), so a compile can be repeated exactly; the list of images is saved next to the cache. The thesis models were compiled before the seed existed.
 
-**Model scripts.** `yolov8s_pose.alls` is used for both n and s, `yolov8m_pose.alls` for m. They refer to layers by position (`conv71`, `output_layer3`, ...): the sigmoid goes on the three class-score outputs, and 16-bit precision on the three keypoint outputs. Positions can differ between models, so after compiling a new model check with `python yolo/scripts/hef_reader.py <model>_optimized.har` that the 16-bit outputs are the keypoint ones (`cv4`). If they aren't, the keypoints end up in 8 bits and lose accuracy.
+**The draw matters.** The deployed s HEF scored keypoint AP 0.260 on COCO; the same ONNX recompiled with `--seed 0` scored 0.517. Nothing else differed. Compile a few seeds and keep the best one. Rank them on images that are not in the test set, otherwise the test score flatters the result.
+
+`--name` and `--out-dir` name the outputs, so builds don't overwrite each other. Every build writes `<name>.build.json` next to its HEF, with:
+- the ONNX and model-script checksums, and the script text
+- the seed and calibration-image list
+- the DFC and Model Zoo versions
+- the HEF checksum and the time each stage took
+
+Several seeds in one go, skipping builds already done:
+
+```bash
+yolo/scripts/compile_seeds.sh build data/images/train2017 "0 1 2 3 4" \
+  upper_body_n=runs/<n run>/weights/best.onnx:yolo/config/yolov8s_pose.alls \
+  upper_body_m=runs/<m run>/weights/best.onnx:yolo/config/yolov8m_pose.alls
+# -> build/upper_body_n_seed0.hef ... with .build.json and .log for each
+```
+
+**Model scripts.** `yolov8s_pose.alls` is used for both n and s, `yolov8m_pose.alls` for m. They refer to layers by position (`conv71`, `output_layer3`, ...): the sigmoid goes on the three class-score outputs, and 16-bit precision on the three keypoint outputs. Positions can differ between models, so after compiling a new model check with `python yolo/scripts/hef_reader.py <model>_optimized.har --alls <the .alls>` that the 16-bit outputs are the keypoint ones (`cv4`) and the sigmoids sit on the class scores (`cv3`). If they aren't, the keypoints end up in 8 bits and lose accuracy.
 
 ---
 
