@@ -3,6 +3,8 @@
 Pose caches are JSON-lines files written by the runtime's research/scb/extract_hef.py (the
 deployed HEF on the Pi) or extract_pt.py (PyTorch): one line per image with the ground-truth
 boxes ("gt": [label, x1, y1, x2, y2]) and the detections ("dets": box, score, 13 keypoints).
+Each source is a (dataset, cache) pair; labels are translated to the shared action names in
+mapping.py, then to focused / distracted by the chosen mapping.
 
 Features come from hcpose.engagement.classifier.feature_vector(), the same code the live
 analyzer runs, so a model trained here sees exactly what it will see on the Pi. Context that
@@ -15,7 +17,8 @@ from hcpose.engagement.classifier import feature_vector
 from hcpose.engagement.features import Baseline, KeypointIndex, compute
 from hcpose.presets import UPPER_BODY13_NAMES
 
-from . import scb
+from . import mapping
+from .datasets import load
 
 IDX = KeypointIndex(UPPER_BODY13_NAMES)
 
@@ -26,8 +29,13 @@ class Samples:
     y: np.ndarray        # True = distracted
     groups: np.ndarray   # lesson group, for grouped cross-validation
     images: np.ndarray   # image path, for the within-image AUC
-    labels: np.ndarray   # the dataset's own action label
+    labels: np.ndarray   # the shared action name (mapping.ACTIONS)
     mixed: np.ndarray    # True if the student's image holds both classes
+    datasets: np.ndarray # which dataset the student comes from
+
+    def subset(self, mask):
+        return Samples(*(getattr(self, f)[mask] for f in
+                         ("X", "y", "groups", "images", "labels", "mixed", "datasets")))
 
 
 def is_front(K, T):
@@ -59,12 +67,17 @@ def match(gt, dets):
             yield gi, di
 
 
-def build(poses, focused, distracted, det_thr=0.3, kpt_thr=0.5, verbose=True):
-    """Samples from one or more SCB pose caches (several caches are pooled, e.g. with and without tiles)."""
+def build(sources, focused, distracted, det_thr=0.3, kpt_thr=0.5, verbose=True, near_dups=True):
+    """Samples from (dataset, pose cache) pairs. Several caches of one dataset are pooled, e.g. with
+    and without tiles; they hold the same images, so their groups agree."""
     T = kpt_thr
-    X, y, groups, imgs, labels = [], [], [], [], []
-    for src_i, path in enumerate(poses):
-        for d in scb.load(path, verbose=verbose and src_i == 0):
+    X, y, groups, imgs, labels, dsets = [], [], [], [], [], []
+    seen = set()
+    for dataset, path in sources:
+        first = dataset not in seen
+        seen.add(dataset)
+        recs = load(dataset, path, verbose=verbose and first, near_dups=near_dups)
+        for d in recs:
             dets = [x for x in d["dets"] if x["score"] >= det_thr]
             K = [np.asarray(x["kpts"], np.float32) for x in dets]
             if not is_front(K, T):
@@ -72,19 +85,25 @@ def build(poses, focused, distracted, det_thr=0.3, kpt_thr=0.5, verbose=True):
             feats = [compute(k, x["box"], IDX, T) for k, x in zip(K, dets)]
             base = Baseline.from_samples([f for f in feats if f.valid], min_n=3)  # class median, as before calibration
             for gi, di in match(d["gt"], dets):
-                cls = d["gt"][gi][0]
-                if cls not in focused | distracted or not feats[di].valid:
+                act = mapping.action(dataset, d["gt"][gi][0])
+                if act not in focused | distracted or not feats[di].valid:
                     continue
                 X.append(feature_vector(K[di], dets[di]["box"], feats[di], base, IDX, T))
-                y.append(cls in distracted)
+                y.append(act in distracted)
                 groups.append(d["group"])  # pooled caches share images, so groups stay consistent
                 imgs.append(f"{d['img']}")
-                labels.append(cls)
+                labels.append(act)
+                dsets.append(dataset)
     if not y:
         raise SystemExit("no labelled front-view students found in the pose caches")
-    X, y, groups, imgs, labels = np.vstack(X), np.array(y), np.array(groups), np.array(imgs), np.array(labels)
+    # number groups by first appearance: for SCB alone this keeps the thesis's group order, so the
+    # grouped folds come out the same; across datasets the "scb:"/"clabehavior:" names stay distinct
+    code = {}
+    groups = np.array([code.setdefault(g, len(code)) for g in groups])
+    X, y, imgs = np.vstack(X), np.array(y), np.array(imgs)
+    labels, dsets = np.array(labels), np.array(dsets)
     mixed = np.zeros(len(y), bool)
     for im in set(imgs):
         m = imgs == im
         mixed[m] = y[m].any() and (~y[m]).any()
-    return Samples(X, y, groups, imgs, labels, mixed)
+    return Samples(X, y, groups, imgs, labels, mixed, dsets)
