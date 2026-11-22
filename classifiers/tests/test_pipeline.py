@@ -53,6 +53,16 @@ def test_prepare_clabehavior(cla):
     assert f"{out}:lookup,read,turn_head,raise_hand,write,discuss,stand" in stdout
 
 
+def test_view_groups_vs_hash(cla):
+    from classifiers.common.neardup import camera_groups, scan_view_groups, view_groups
+    _, out, _ = cla
+    paths = sorted(str(p) for p in out.glob("images/*/*.jpg"))
+    assert len(set(view_groups(paths, 0.8))) == 3
+    assert len(set(camera_groups(paths, max_bits=4))) > 3      # the old hash splits moving scenes
+    scan = {t: n for t, n, _, _ in scan_view_groups(paths)}
+    assert scan[0.95] >= scan[0.8] == scan[0.7] == 3
+
+
 def test_mappings():
     assert mapping.action("scb", "hand-raising") == "raise_hand"
     assert mapping.action("clabehavior", "Lookup") == "lookup"
