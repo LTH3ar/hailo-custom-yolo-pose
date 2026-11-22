@@ -67,8 +67,8 @@ ClaBehavior is laid out like SCB first (on the machine that holds the images), t
 
 ```bash
 python -m classifiers.prepare_clabehavior ~/datasets/clabehavior ~/datasets/clabehavior_yolo --scan
-# prints the number of camera groups per --min-corr; pick a value on the plateau, then:
-python -m classifiers.prepare_clabehavior ~/datasets/clabehavior ~/datasets/clabehavior_yolo --min-corr 0.8
+# prints the number of camera groups per --min-corr; ClaBehavior has no plateau, thesis v1.1 uses 0.4:
+python -m classifiers.prepare_clabehavior ~/datasets/clabehavior ~/datasets/clabehavior_yolo --min-corr 0.4
 # prints the extractor argument: ~/datasets/clabehavior_yolo:lookup,read,turn_head,...
 .venv/bin/python research/scb/extract_hef.py ~/models/upper_body_m.hef ~/datasets/poses_cla_m.jsonl <that argument>
 ```
