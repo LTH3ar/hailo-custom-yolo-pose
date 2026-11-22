@@ -66,7 +66,9 @@ A pose cache is a JSON-lines file with one line per image: the image path, the d
 ClaBehavior is laid out like SCB first (on the machine that holds the images), then extracted the same way:
 
 ```bash
-python -m classifiers.prepare_clabehavior ~/datasets/clabehavior ~/datasets/clabehavior_yolo
+python -m classifiers.prepare_clabehavior ~/datasets/clabehavior ~/datasets/clabehavior_yolo --scan
+# prints the number of camera groups per --min-corr; pick a value on the plateau, then:
+python -m classifiers.prepare_clabehavior ~/datasets/clabehavior ~/datasets/clabehavior_yolo --min-corr 0.8
 # prints the extractor argument: ~/datasets/clabehavior_yolo:lookup,read,turn_head,...
 .venv/bin/python research/scb/extract_hef.py ~/models/upper_body_m.hef ~/datasets/poses_cla_m.jsonl <that argument>
 ```
@@ -101,4 +103,4 @@ Each run prints, for every family, the AUC, the within-image AUC and the balance
 
 ## What the thesis found
 
-On SCB the classifiers rank actions well (within-image AUC 0.84 for trees and MLP), but on a real lecture they call 48-89% of attentive students distracted: SCB has no "listening" label, so a raised head reads as distracted. The rules stay the default in hcpose. ClaBehavior's lookup class and the cross-dataset tests check whether that gap closes with head-up attentive examples.
+On SCB the classifiers rank actions well (within-image AUC 0.83 for trees, 0.82 for the MLP; thesis v1.1, INT8 m poses on the Pi), but on a real lecture they call 44-82% of attentive students distracted: SCB has no "listening" label, so a raised head reads as distracted. Adding ClaBehavior, whose lookup class is that missing state, barely helps: trees and MLP still flag 43-51% of the lecture, and models trained on one dataset score AUC 0.65-0.81 on the other. The rules stay the default in hcpose.

@@ -7,6 +7,13 @@ images whose hashes differ in at most a few bits look alike. That catches two th
   - frames from the same fixed camera: camera_groups() links all look-alike frames, so a
     camera's frames stay on one side of a train/test split.
 
+For fixed cameras over crowded rooms the 64-bit hash is too fine: students move between frames
+and the hash of one camera's frames drifts by more than a few bits (on ClaBehavior, 4 bits split
+13 camera views into 107 groups, 93 of them single frames). view_groups() therefore compares
+whole thumbnails instead: two frames of the same size whose 48x27 grey thumbnails correlate at
+min_corr or more share a camera, linked transitively. scan_view_groups() prints the number of
+groups for a range of min_corr, so the threshold can be read off where the count stops changing.
+
 Hashes are cached in a JSON file next to the data, so the images are read once.
 """
 import json
@@ -108,3 +115,53 @@ def same_picture_pairs(paths, max_bits=4, cache_path=None):
     h = hashes(paths, cache_path)
     memo = {}
     return [(paths[i], paths[j]) for i, j in near_pairs(h, max_bits) if same_picture(paths[i], paths[j], _memo=memo)]
+
+
+def view_signature(path, size=(48, 27)):
+    """Grey thumbnail, mean 0 and unit norm, plus the image size: frames of one fixed camera share the
+    background (walls, board, desks), which dominates a thumbnail even with students moving."""
+    with Image.open(path) as im:
+        wh = im.size
+        g = np.asarray(im.convert("L").resize(size, Image.BILINEAR), dtype=np.float32).ravel()
+    g -= g.mean()
+    n = float(np.linalg.norm(g))
+    return wh, (g / n if n > 0 else g)
+
+
+def view_similarity(paths, cache=None):
+    """Correlation matrix of the view signatures (-1 if the image sizes differ), and the sizes."""
+    memo = cache if cache is not None else {}
+    sigs = []
+    for p in paths:
+        if p not in memo:
+            memo[p] = view_signature(p)
+        sigs.append(memo[p])
+    sizes = [wh for wh, _ in sigs]
+    m = np.stack([v for _, v in sigs])
+    corr = m @ m.T
+    same = np.array([[a == b for b in sizes] for a in sizes])
+    corr[~same] = -1.0
+    return corr, sizes
+
+
+def view_groups(paths, min_corr=0.8, corr=None):
+    """One camera-view group number per path: same-size frames whose thumbnails correlate at
+    min_corr or more are linked, then connected components are taken."""
+    if corr is None:
+        corr, _ = view_similarity(paths)
+    uf = UnionFind(len(paths))
+    ii, jj = np.nonzero(np.triu(corr >= min_corr, 1))
+    for i, j in zip(ii.tolist(), jj.tolist()):
+        uf.union(i, j)
+    return uf.labels()
+
+
+def scan_view_groups(paths, thresholds=(0.95, 0.9, 0.85, 0.8, 0.75, 0.7, 0.65, 0.6, 0.5, 0.4)):
+    """[(min_corr, number of groups, single-frame groups, sizes)] for each threshold."""
+    corr, _ = view_similarity(paths)
+    out = []
+    for t in thresholds:
+        g = view_groups(paths, t, corr)
+        sizes = sorted(np.bincount(g).tolist(), reverse=True)
+        out.append((t, len(sizes), sum(1 for x in sizes if x == 1), sizes))
+    return out

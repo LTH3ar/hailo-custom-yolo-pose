@@ -105,7 +105,11 @@ def write_clabehavior(root, cameras=3, frames=12, per_image=6, seed=1):
     for c in range(cameras):
         for f in range(frames):
             fn = f"cam{c}_{f:04d}.jpg"
-            arr = np.clip(bases[c] + nrng.integers(-3, 4, bases[c].shape), 0, 255).astype(np.uint8)
+            arr = np.clip(bases[c] + nrng.integers(-3, 4, bases[c].shape), 0, 255)
+            for _ in range(4):  # students who move between frames: they break a fine hash, not the background
+                x, y = int(nrng.integers(0, 580)), int(nrng.integers(60, 300))
+                arr[y:y + 60, x:x + 45] = nrng.integers(0, 256, 3)
+            arr = arr.astype(np.uint8)
             Image.fromarray(arr).save(root / "coco" / "images" / fn, quality=92)
             split = "val" if f % 6 == 0 else "train"
             iid = len(splits["train"]["images"]) + len(splits["val"]["images"]) + 1
