@@ -23,6 +23,7 @@ A comparison for the paper, not part of hcpose. It answers: does a model that lo
 | 3. Train | ubuntu3060 | `baselines/crop_cls/train.sh OUT` (fold0-4, all, scb_only, cla_only; 50 epochs, 224 px) |
 | 4. Predict | ubuntu3060 | `python -m baselines.crop_cls.predict split.json OUT OUT/runs -o preds.jsonl` |
 | 5. Score | any | `python -m baselines.crop_cls.score split.json preds.jsonl --report crop_cls.json` |
+| 5b. Paired | pi5 | `classifiers.train_all ... --folds split.json --save-cv cv_<mapping>.npz` per mapping, then `python -m baselines.crop_cls.paired split.json preds.jsonl --cls thesis=cv_thesis.npz strict=cv_strict.npz lenient=cv_lenient.npz`: both models on the same boxes, one vote per box, with a lesson-level bootstrap interval for the difference |
 | 6. Clips | ubuntu3060 (videos) | `python -m baselines.crop_cls.clips OUT/runs/all/weights/last.pt VIDEO ANALYSIS.jsonl -o PREFIX` |
 
 The models use the last epoch's weights: Ultralytics' val folder is a sample of the training crops (it needs one), so "best" would be chosen on training data.

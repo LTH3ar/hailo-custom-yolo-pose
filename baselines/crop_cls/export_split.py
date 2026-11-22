@@ -60,17 +60,24 @@ def main(argv=None):
     for img, gb, db in zip(smp.images, smp.gt_boxes, smp.det_boxes):
         det_of.setdefault(box_key(img, gb), [round(float(v), 1) for v in db])
 
-    students, seen = [], set()
+    sample_action = {box_key(i, b): a for i, b, a in zip(smp.images, smp.gt_boxes, smp.labels)}
+    students, seen, dup = [], set(), 0
     for dataset, path in sources:
         if dataset in seen:  # pooled caches hold the same images: list each student once
             continue
         seen.add(dataset)
         for d in load(dataset, path, verbose=False):
+            boxes = set()
             for g in d["gt"]:
                 act = mapping.action(dataset, g[0])
                 if act is None:
                     continue
                 k = box_key(d["img"], g[1:5])
+                if k in boxes:  # the same box labelled twice (e.g. raise_hand and read): keep one entry
+                    dup += 1
+                    continue
+                boxes.add(k)
+                act = sample_action.get(k, act)  # the action the classifiers used for this box
                 students.append({"dataset": dataset, "img": d["img"], "group": d["group"], "action": act,
                                  "box": [round(float(v), 1) for v in g[1:5]], "eval": k in det_of,
                                  "det_box": det_of.get(k)})
@@ -86,6 +93,8 @@ def main(argv=None):
         s["fold"] = folds[s["group"]]
 
     n_eval = sum(s["eval"] for s in students)
+    if dup:
+        print(f"{dup} boxes labelled twice in one image kept once")
     if n_eval != len(det_of):
         print(f"[warn] {len(det_of) - n_eval} classifier students not found among the labelled boxes")
     json.dump({"folds": folds, "actions": list(mapping.ACTIONS), "students": students,

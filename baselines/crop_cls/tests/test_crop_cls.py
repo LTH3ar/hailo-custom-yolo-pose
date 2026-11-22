@@ -138,7 +138,7 @@ def test_predict_runs(split, tmp_path, monkeypatch):
 
 
 def test_clips_runs(tmp_path, monkeypatch):
-    import cv2
+    cv2 = pytest.importorskip("cv2")  # pi5's classifier venv has no OpenCV; ubuntu3060's has
     import numpy as np
     from baselines.crop_cls import clips
     _fake_ultralytics(monkeypatch, list(mapping.ACTIONS))
@@ -163,3 +163,28 @@ def test_clips_runs(tmp_path, monkeypatch):
     assert smooth[1]["persons"][0]["engagement"]["state"] == "focused"          # smoothing holds at first
     assert smooth[-1]["persons"][0]["engagement"]["state"] == "distracted"
     assert raw[-1]["class"]["class_pct_distracted"] == 100.0
+
+
+def test_paired(split, tmp_path):
+    from baselines.crop_cls import paired
+    _, path, cache, cla = split
+    npz = tmp_path / "cv_strict.npz"
+    train_all(["logistic", "trees"], "test", [cache, "--clabehavior", cla, "--mapping", "strict",
+                                              "--folds", str(path), "--save-cv", str(npz)])
+    S = json.loads(path.read_text())
+    preds = tmp_path / "preds.jsonl"
+    with open(preds, "w") as f:
+        for s in S["students"]:
+            if s["eval"]:
+                probs = {a: (0.9 if a == s["action"] else 0.1 / 7) for a in mapping.ACTIONS}  # a perfect crop model
+                for _ in range(2):  # a box listed twice must count once
+                    f.write(json.dumps({"id": s["id"], "run": f"fold{s['fold']}", "probs": probs}) + "\n")
+    rep = tmp_path / "paired.json"
+    paired.main([str(path), str(preds), "--cls", f"strict={npz}", "--reps", "50", "--report", str(rep)])
+    R = json.loads(rep.read_text())
+    r = R["strict/pooled/logistic"]
+    assert r["auc_a"] == 1.0 and r["auc_b"] < 1.0
+    assert r["ci_pose_minus_crop"]["auc"][1] < 0                       # the perfect crop model is clearly better
+    f, d = mapping.get("strict")
+    n_boxes = len({(s["img"], tuple(s["box"])) for s in S["students"] if s["eval"] and s["action"] in f | d})
+    assert r["n"] <= n_boxes
