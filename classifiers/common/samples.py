@@ -32,10 +32,14 @@ class Samples:
     labels: np.ndarray   # the shared action name (mapping.ACTIONS)
     mixed: np.ndarray    # True if the student's image holds both classes
     datasets: np.ndarray # which dataset the student comes from
+    group_names: np.ndarray = None  # the group's name ("scb:12"), stable across runs and mappings
+    gt_boxes: np.ndarray = None     # the labelled box [x1, y1, x2, y2]
+    det_boxes: np.ndarray = None    # the pose detection matched to it
+
+    FIELDS = ("X", "y", "groups", "images", "labels", "mixed", "datasets", "group_names", "gt_boxes", "det_boxes")
 
     def subset(self, mask):
-        return Samples(*(getattr(self, f)[mask] for f in
-                         ("X", "y", "groups", "images", "labels", "mixed", "datasets")))
+        return Samples(*(None if getattr(self, f) is None else getattr(self, f)[mask] for f in self.FIELDS))
 
 
 def is_front(K, T):
@@ -71,7 +75,7 @@ def build(sources, focused, distracted, det_thr=0.3, kpt_thr=0.5, verbose=True, 
     """Samples from (dataset, pose cache) pairs. Several caches of one dataset are pooled, e.g. with
     and without tiles; they hold the same images, so their groups agree."""
     T = kpt_thr
-    X, y, groups, imgs, labels, dsets = [], [], [], [], [], []
+    X, y, groups, imgs, labels, dsets, gboxes, dboxes = [], [], [], [], [], [], [], []
     seen = set()
     for dataset, path in sources:
         first = dataset not in seen
@@ -94,11 +98,14 @@ def build(sources, focused, distracted, det_thr=0.3, kpt_thr=0.5, verbose=True, 
                 imgs.append(f"{d['img']}")
                 labels.append(act)
                 dsets.append(dataset)
+                gboxes.append([float(v) for v in d["gt"][gi][1:5]])
+                dboxes.append([float(v) for v in dets[di]["box"]])
     if not y:
         raise SystemExit("no labelled front-view students found in the pose caches")
     # number groups by first appearance: for SCB alone this keeps the thesis's group order, so the
     # grouped folds come out the same; across datasets the "scb:"/"clabehavior:" names stay distinct
     code = {}
+    names = np.array(groups)
     groups = np.array([code.setdefault(g, len(code)) for g in groups])
     X, y, imgs = np.vstack(X), np.array(y), np.array(imgs)
     labels, dsets = np.array(labels), np.array(dsets)
@@ -106,4 +113,4 @@ def build(sources, focused, distracted, det_thr=0.3, kpt_thr=0.5, verbose=True, 
     for im in set(imgs):
         m = imgs == im
         mixed[m] = y[m].any() and (~y[m]).any()
-    return Samples(X, y, groups, imgs, labels, mixed, dsets)
+    return Samples(X, y, groups, imgs, labels, mixed, dsets, names, np.array(gboxes), np.array(dboxes))

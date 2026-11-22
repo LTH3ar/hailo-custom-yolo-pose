@@ -6,6 +6,7 @@ Training for [hcpose](https://github.com/LTH3ar/hailo-custom-yolo-pose-runtime),
 |---|---|---|
 | [`yolo/`](yolo/README.md) | The 13-keypoint upper-body YOLO pose models (n, s, m): Ultralytics training, ONNX export, Hailo INT8 compilation | `.hef` files for the Pi |
 | [`classifiers/`](classifiers/README.md) | The per-student focused/distracted classifiers on pose features: `trees/`, `logistic/`, `mlp/` | `scb_<kind>.json` for `hcpose/engagement/models` |
+| [`baselines/crop_cls/`](baselines/crop_cls/README.md) | A comparison baseline, not part of hcpose: YOLOv8s-cls on student image crops, scored on the same folds, labels and clips | results only |
 
 Run every command from the repository root. The two parts use separate environments: `yolo/` needs PyTorch + Ultralytics and the Hailo Dataflow Compiler (Python 3.10), `classifiers/` needs scikit-learn and the `hcpose` package.
 

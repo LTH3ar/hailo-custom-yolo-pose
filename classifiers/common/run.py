@@ -43,10 +43,22 @@ def within_image_auc(s, smp):
     return wins / total if total else float("nan")
 
 
-def cross_validate(fam, smp, folds=5):
+def fold_splits(smp, folds=5, fold_map=None):
+    """(train, test) index pairs. Default: GroupKFold over the groups. With fold_map (group name ->
+    fold, e.g. from a baseline's split.json), every model is tested on exactly the same students."""
+    if fold_map is None:
+        return list(GroupKFold(n_splits=folds).split(smp.X, smp.y, smp.groups))
+    missing = sorted({g for g in smp.group_names if g not in fold_map})
+    if missing:
+        raise SystemExit(f"{len(missing)} groups are not in the fold map (e.g. {missing[:3]})")
+    f = np.array([fold_map[g] for g in smp.group_names])
+    return [(np.nonzero(f != k)[0], np.nonzero(f == k)[0]) for k in sorted(set(f.tolist()))]
+
+
+def cross_validate(fam, smp, folds=5, fold_map=None):
     """Out-of-fold probabilities (balanced scale) and metrics, folds grouped by lesson."""
     oof = np.zeros(len(smp.y))
-    for tr, te in GroupKFold(n_splits=folds).split(smp.X, smp.y, smp.groups):
+    for tr, te in fold_splits(smp, folds, fold_map):
         m = fam.make()
         m.fit(smp.X[tr], smp.y[tr])
         oof[te] = shift(m.predict_proba(smp.X[te])[:, 1], prior_offset(fam.kind, smp.y[tr]))
@@ -132,6 +144,9 @@ def parser(description):
     ap.add_argument("--save-cv", metavar="NPZ",
                     help="save out-of-fold predictions + labels + metrics (for ROC curves and report tables)")
     ap.add_argument("--save-models", metavar="DIR", help="also pickle the fitted sklearn models here (for the record)")
+    ap.add_argument("--folds", metavar="SPLIT_JSON",
+                    help="use the fold of each group from this file (baselines/crop_cls/export_split.py) instead of "
+                         "GroupKFold, so the classifiers and the crop baseline are tested on the same students")
     return ap
 
 
@@ -146,6 +161,7 @@ def main(kinds, description, argv=None):
         raise SystemExit("the thesis mapping is SCB-only; use --mapping strict or lenient with ClaBehavior")
     focused, distracted = mapping.get(args.mapping)
     smp = build(args.sources, focused, distracted, args.det_thr, args.kpt_thr, near_dups=not args.no_near_dups)
+    fold_map = json.load(open(args.folds))["folds"] if args.folds else None
     names = sorted(set(smp.datasets.tolist()))
     print(f"{len(smp.y)} students ({len(args.sources)} pose cache(s)), {len(set(smp.groups))} lesson groups, "
           f"distracted {smp.y.mean():.1%}" + (f"; mapping {args.mapping}" if args.mapping != "thesis" else ""))
@@ -158,7 +174,7 @@ def main(kinds, description, argv=None):
     print(f"\n{'model':24} {'AUC':>6} {'within-img AUC':>15} {'bal. acc':>9}  (5-fold, grouped by lesson)")
     cv, oofs = {}, {}
     for fam in fams:
-        oofs[fam.title], cv[fam.title] = cross_validate(fam, smp)
+        oofs[fam.title], cv[fam.title] = cross_validate(fam, smp, fold_map=fold_map)
         m = cv[fam.title]
         print(f"{fam.title:24} {m['auc']:6.3f} {m['within_image_auc']:15.3f} {m['balanced_acc']:8.1%}")
         if len(names) > 1:
