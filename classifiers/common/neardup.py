@@ -8,11 +8,15 @@ images whose hashes differ in at most a few bits look alike. That catches two th
     camera's frames stay on one side of a train/test split.
 
 For fixed cameras over crowded rooms the 64-bit hash is too fine: students move between frames
-and the hash of one camera's frames drifts by more than a few bits (on ClaBehavior, 4 bits split
-13 camera views into 107 groups, 93 of them single frames). view_groups() therefore compares
+and the hash of one camera's frames drifts by more than a few bits (on ClaBehavior, 4 bits gave
+107 groups, 93 of them single frames). view_groups() therefore compares
 whole thumbnails instead: two frames of the same size whose 48x27 grey thumbnails correlate at
 min_corr or more share a camera, linked transitively. scan_view_groups() prints the number of
-groups for a range of min_corr, so the threshold can be read off where the count stops changing.
+groups for a range of min_corr. On ClaBehavior there was no plateau: two large groups (155 and 122
+frames) are stable from 0.85 down, while the other ~120 frames keep merging slowly (86 groups at
+0.85, 42 at 0.40). Merging too much only makes a grouped CV stricter, so when in doubt take the
+lowest threshold that still leaves enough groups for the folds. Thesis v1.1 uses 0.40; the
+ClaBehavior CV scores moved by at most 0.02 AUC between 0.85 and 0.40.
 
 Hashes are cached in a JSON file next to the data, so the images are read once.
 """

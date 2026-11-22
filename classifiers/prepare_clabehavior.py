@@ -11,12 +11,13 @@ list. This script writes that layout (images as symlinks, nothing copied) and:
 It prints the extractor's DIR:classes argument.
 
 Choose --min-corr first with --scan: it prints the number of groups for a range of thresholds and
-writes nothing. Take a threshold inside the range where the count stops changing (a plateau); a
-threshold too high splits a camera into many single frames, too low chains different cameras.
+writes nothing. A threshold too high splits a camera into many single frames, which leaks frames of
+one camera across folds; too low chains different cameras, which only makes the CV stricter. On
+ClaBehavior there is no plateau, and thesis v1.1 uses 0.40 (41 groups after pose matching).
 
 Run where the images are (no model involved):
   python -m classifiers.prepare_clabehavior ~/datasets/clabehavior ~/datasets/clabehavior_yolo --scan
-  python -m classifiers.prepare_clabehavior ~/datasets/clabehavior ~/datasets/clabehavior_yolo --min-corr 0.8
+  python -m classifiers.prepare_clabehavior ~/datasets/clabehavior ~/datasets/clabehavior_yolo --min-corr 0.4
 """
 import argparse
 import json
@@ -54,9 +55,9 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("src", type=Path, help="the downloaded ClaBehavior folder (with the COCO json files)")
     ap.add_argument("out", type=Path, help="output folder in SCB layout")
-    ap.add_argument("--min-corr", type=float, default=0.8,
+    ap.add_argument("--min-corr", type=float, default=0.4,
                     help="same-size frames whose thumbnails correlate at least this much share a camera group "
-                         "(default 0.8; check with --scan)")
+                         "(default 0.4, as in thesis v1.1; check with --scan)")
     ap.add_argument("--scan", action="store_true", help="print the group count per threshold and exit")
     ap.add_argument("--group-bits", type=int,
                     help="old grouping: 64-bit hash within this many bits (too fine for crowded rooms)")
