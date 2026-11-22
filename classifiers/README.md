@@ -83,7 +83,7 @@ python -m classifiers.train_all ~/scb/poses_m.jsonl ~/scb/poses_m_tiles.jsonl \
     --mapping strict --cross --det-thr 0.3 --report report_strict.json
 ```
 
-This prints the pooled cross-validation (folds grouped by lesson or camera view), broken down per dataset, and then `--cross`: each model trained on all of one dataset and tested on the other. Run it again with `--mapping lenient`.
+This prints the pooled cross-validation (folds grouped by lesson or camera view), broken down per dataset, and then `--cross`: each model trained on all of one dataset and tested on the other. Run it again with `--mapping lenient`. With `--folds split.json` (from `baselines/crop_cls/export_split.py`) the folds come from that file instead of GroupKFold, so the classifiers and the crop baseline are tested on exactly the same students.
 
 The thesis models, reproduced exactly (`--no-near-dups` keeps the thesis's folds; the thesis mapping is the default):
 

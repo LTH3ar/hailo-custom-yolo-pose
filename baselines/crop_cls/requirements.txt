@@ -1,0 +1,8 @@
+# baselines/crop_cls: the crop classifier (ubuntu3060, GPU) plus what score.py and export_split.py need
+ultralytics
+opencv-python
+numpy
+scikit-learn>=1.4
+pillow
+pytest
+# export_split.py (pi5) also needs hcpose:  pip install -e path/to/hailo-custom-yolo-pose-runtime
