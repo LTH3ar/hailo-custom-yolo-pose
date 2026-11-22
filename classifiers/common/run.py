@@ -214,7 +214,7 @@ def main(kinds, description, argv=None):
     if args.save_cv:
         np.savez_compressed(
             args.save_cv, y=smp.y, labels=smp.labels, groups=smp.groups, images=smp.images, mixed_image=smp.mixed,
-            **({"datasets": smp.datasets} if len(names) > 1 else {}),
+            datasets=smp.datasets, group_names=smp.group_names, gt_boxes=smp.gt_boxes,
             feature_names=np.array(FEATURE_NAMES), X=smp.X,
             **{f"oof_{k.split(' ')[0].lower().replace('-', '_')}": v for k, v in oofs.items()},
         )
