@@ -13,7 +13,8 @@ Both carry the input's header "source", so research/labels/score_labels.py and t
 match them to the human labels like any hcpose output. The class share is the plain share of the
 frame's students in the distracted state (no seat memory or zone weighting).
 
-The video frames are minors' images for every clip but clip_4 and the exam hall: nothing is saved
+The video frames may not be published for any clip but clip_4 and the exam hall (minors, or adults who
+agreed only to recording, as in clip_5): nothing is saved
 but these JSON files.
 
 usage:

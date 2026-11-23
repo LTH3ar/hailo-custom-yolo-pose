@@ -12,7 +12,7 @@ A comparison for the paper, not part of hcpose. It answers: does a model that lo
 - Clips: the boxes and seats of an existing `hcpose analyze` output; the result is written in the same format, so `research/labels/score_labels.py` (blind labels), the clip summary and `research/staged/score.py` (clip_4) score it unchanged. Two variants: per frame, and smoothed with hcpose's own EMA and hysteresis.
 - Precision: FP32 on the GPU, the baseline's best case. hcpose's results are INT8 on the Pi.
 
-**Privacy.** SCB, ClaBehavior, the lecture, the study hall and clip_5 are minors' images. The crops and frames stay on ubuntu3060; only `split.json`, predictions, metrics and the JSON outputs leave it.
+**Privacy.** SCB, ClaBehavior, the lecture and the study hall are minors' images; clip_5's students are adults who agreed to be recorded, not to have their images published. The crops and frames stay on ubuntu3060; only `split.json`, predictions, metrics and the JSON outputs leave it.
 
 ## Steps
 
